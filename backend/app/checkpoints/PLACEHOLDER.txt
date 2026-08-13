@@ -1,0 +1,7 @@
+Place your trained checkpoint here as wound_unet.pth
+
+After training in Colab:
+1. Download best_model.pth from Colab
+2. Rename it to wound_unet.pth
+3. Place it in this folder: /backend/app/checkpoints/wound_unet.pth
+4. Set MODEL_CHECKPOINT_PATH=app/checkpoints/wound_unet.pth in .env

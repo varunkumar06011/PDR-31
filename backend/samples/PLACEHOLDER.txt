@@ -1,0 +1,8 @@
+Place 2-3 test wound images in this folder (e.g. wound1.jpg, wound2.png).
+
+To sanity-check the model in isolation:
+  cd backend
+  python -m app.model
+
+It will run inference on the first image it finds here and save the
+overlay result to samples/output_test.png.

@@ -1,0 +1,493 @@
+<!DOCTYPE html>
+<html lang="en">
+<!--
+  Deploy to Vercel: set root directory to /frontend, no build command,
+  no install command — it's a static file. After backend is live on Railway,
+  update BACKEND_URL in the <script> below and redeploy.
+-->
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Wound Segmentation & Healing Tracker</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: system-ui, -apple-system, sans-serif;
+            background: #f4f6f9;
+            color: #1a1a2e;
+            min-height: 100vh;
+        }
+        header {
+            background: #16213e;
+            color: #fff;
+            padding: 1.5rem 2rem;
+            text-align: center;
+        }
+        header h1 { font-size: 1.5rem; }
+        header p { opacity: 0.7; font-size: 0.85rem; margin-top: 0.25rem; }
+        main {
+            max-width: 700px;
+            margin: 2rem auto;
+            padding: 0 1rem;
+        }
+        .card {
+            background: #fff;
+            border-radius: 12px;
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+        }
+        .card h2 {
+            font-size: 1.1rem;
+            margin-bottom: 1rem;
+            color: #16213e;
+        }
+        .upload-area {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+            align-items: center;
+        }
+        .form-row {
+            display: flex;
+            gap: 1rem;
+            width: 100%;
+        }
+        .form-row input {
+            flex: 1;
+            padding: 0.6rem 0.8rem;
+            border: 1px solid #ccc;
+            border-radius: 8px;
+            font-size: 0.9rem;
+            font-family: inherit;
+        }
+        .form-row input:focus {
+            outline: none;
+            border-color: #0f3460;
+        }
+        .form-row label {
+            font-size: 0.8rem;
+            color: #666;
+            display: block;
+            margin-bottom: 0.25rem;
+        }
+        .form-field { flex: 1; }
+        .upload-area input[type="file"] { display: none; }
+        .upload-label {
+            display: inline-block;
+            padding: 0.75rem 1.5rem;
+            background: #0f3460;
+            color: #fff;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 0.95rem;
+            transition: background 0.2s;
+        }
+        .upload-label:hover { background: #1a4a8a; }
+        #analyzeBtn {
+            padding: 0.75rem 2rem;
+            background: #e94560;
+            color: #fff;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 0.95rem;
+            transition: background 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        #analyzeBtn:hover:not(:disabled) { background: #c73650; }
+        #analyzeBtn:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+        .spinner {
+            width: 16px;
+            height: 16px;
+            border: 2px solid #fff;
+            border-top-color: transparent;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+            display: none;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        .preview-container {
+            text-align: center;
+            margin-top: 1rem;
+        }
+        .preview-container img {
+            max-width: 100%;
+            border-radius: 8px;
+        }
+        .results-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1.5rem;
+        }
+        @media (max-width: 600px) {
+            .results-grid { grid-template-columns: 1fr; }
+        }
+        .result-item { text-align: center; }
+        .result-item img {
+            max-width: 100%;
+            border-radius: 8px;
+            border: 1px solid #eee;
+        }
+        .area-display {
+            font-size: 2.5rem;
+            font-weight: bold;
+            color: #0f3460;
+        }
+        .area-unit { font-size: 1rem; color: #888; }
+        .calibration-note {
+            font-size: 0.75rem;
+            color: #999;
+            margin-top: 0.5rem;
+            text-align: center;
+        }
+        #trendCanvas {
+            width: 100%;
+            border-radius: 8px;
+            border: 1px solid #eee;
+        }
+        .error-banner {
+            background: #fff0f0;
+            border: 1px solid #e94560;
+            color: #c73650;
+            border-radius: 8px;
+            padding: 0.75rem 1rem;
+            font-size: 0.9rem;
+            margin-top: 1rem;
+            display: none;
+            text-align: center;
+        }
+        .status-msg {
+            text-align: center;
+            padding: 0.5rem;
+            font-size: 0.9rem;
+            color: #666;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>Wound Segmentation &amp; Healing Tracker</h1>
+        <p>Demo / prototype — not a clinical tool. For illustrative purposes only.</p>
+    </header>
+
+    <main>
+        <!-- Upload Section -->
+        <div class="card">
+            <h2>1. Upload Wound Image</h2>
+            <div class="upload-area">
+                <div class="form-row">
+                    <div class="form-field">
+                        <label for="patientId">Patient ID</label>
+                        <input type="text" id="patientId" placeholder="e.g. P001">
+                    </div>
+                    <div class="form-field">
+                        <label for="visitDate">Visit Date</label>
+                        <input type="date" id="visitDate">
+                    </div>
+                </div>
+                <label class="upload-label" for="fileInput">Choose File</label>
+                <input type="file" id="fileInput" accept="image/*">
+                <button id="analyzeBtn" disabled>
+                    <span class="spinner" id="spinner"></span>
+                    <span id="btnText">Analyze</span>
+                </button>
+            </div>
+            <div class="preview-container" id="previewContainer" style="display:none;">
+                <img id="previewImg" alt="Preview">
+            </div>
+            <div class="error-banner" id="errorBanner"></div>
+            <div class="status-msg" id="statusMsg"></div>
+        </div>
+
+        <!-- Results Section -->
+        <div class="card" id="resultsCard" style="display:none;">
+            <h2>2. Results</h2>
+            <div class="results-grid">
+                <div class="result-item">
+                    <h3>Mask Overlay</h3>
+                    <img id="maskImg" alt="Mask overlay">
+                </div>
+                <div class="result-item">
+                    <h3>Area Measurement</h3>
+                    <div class="area-display"><span id="areaValue">--</span> <span class="area-unit">mm²</span></div>
+                    <div class="calibration-note">Area calculated using pixel-based calibration from detected reference marker.</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Trend Chart Section -->
+        <div class="card">
+            <h2>3. Healing Trend</h2>
+            <canvas id="trendCanvas" height="220"></canvas>
+        </div>
+    </main>
+
+    <script>
+        // ── CONFIG ──────────────────────────────────────────────
+        // After deploying backend to Railway, change this URL and redeploy:
+        const BACKEND_URL = 'http://localhost:8000';
+        // ────────────────────────────────────────────────────────
+
+        const fileInput = document.getElementById('fileInput');
+        const analyzeBtn = document.getElementById('analyzeBtn');
+        const btnText = document.getElementById('btnText');
+        const spinner = document.getElementById('spinner');
+        const patientIdInput = document.getElementById('patientId');
+        const visitDateInput = document.getElementById('visitDate');
+        const previewContainer = document.getElementById('previewContainer');
+        const previewImg = document.getElementById('previewImg');
+        const statusMsg = document.getElementById('statusMsg');
+        const errorBanner = document.getElementById('errorBanner');
+        const resultsCard = document.getElementById('resultsCard');
+        const maskImg = document.getElementById('maskImg');
+        const areaValue = document.getElementById('areaValue');
+        const trendCanvas = document.getElementById('trendCanvas');
+
+        let selectedFile = null;
+
+        visitDateInput.valueAsDate = new Date();
+
+        fileInput.addEventListener('change', (e) => {
+            selectedFile = e.target.files[0];
+            if (selectedFile) {
+                const reader = new FileReader();
+                reader.onload = (ev) => {
+                    previewImg.src = ev.target.result;
+                    previewContainer.style.display = 'block';
+                    analyzeBtn.disabled = false;
+                };
+                reader.readAsDataURL(selectedFile);
+            }
+        });
+
+        analyzeBtn.addEventListener('click', async () => {
+            if (!selectedFile) return;
+            const patientId = patientIdInput.value.trim();
+            const visitDate = visitDateInput.value;
+            if (!patientId) { showError('Please enter a Patient ID.'); return; }
+            if (!visitDate) { showError('Please select a Visit Date.'); return; }
+            await analyzeImage(selectedFile, patientId, visitDate);
+        });
+
+        function showError(msg) {
+            errorBanner.textContent = msg;
+            errorBanner.style.display = 'block';
+        }
+        function clearError() {
+            errorBanner.style.display = 'none';
+        }
+        function showStatus(msg) {
+            statusMsg.textContent = msg;
+        }
+
+        function setLoading(loading) {
+            analyzeBtn.disabled = loading;
+            btnText.textContent = loading ? 'Analyzing...' : 'Analyze';
+            spinner.style.display = loading ? 'inline-block' : 'none';
+        }
+
+        async function analyzeImage(file, patientId, visitDate) {
+            setLoading(true);
+            showStatus('Uploading and analyzing image...');
+            clearError();
+            resultsCard.style.display = 'none';
+
+            const formData = new FormData();
+            formData.append('file', file);
+            formData.append('patient_id', patientId);
+            formData.append('visit_date', visitDate);
+
+            try {
+                const resp = await fetch(`${BACKEND_URL}/segment`, {
+                    method: 'POST',
+                    body: formData,
+                });
+
+                if (!resp.ok) {
+                    const err = await resp.json().catch(() => ({}));
+                    const detail = err.detail || `Server error (${resp.status})`;
+                    throw new Error(detail);
+                }
+
+                const data = await resp.json();
+                maskImg.src = data.overlay_url;
+                areaValue.textContent = data.area_mm2.toFixed(1);
+                resultsCard.style.display = 'block';
+                showStatus('Analysis complete.');
+                clearError();
+
+                await loadTrend(patientId);
+            } catch (err) {
+                if (err.message === 'Failed to fetch' || err.name === 'TypeError') {
+                    showError("Can't reach the backend — check BACKEND_URL");
+                } else {
+                    showError(err.message);
+                }
+                showStatus('');
+            } finally {
+                setLoading(false);
+            }
+        }
+
+        async function loadTrend(patientId) {
+            if (!patientId) return;
+            try {
+                const resp = await fetch(`${BACKEND_URL}/trajectory/${encodeURIComponent(patientId)}`);
+                if (!resp.ok) {
+                    const err = await resp.json().catch(() => ({}));
+                    throw new Error(err.detail || `Failed to load trend (${resp.status})`);
+                }
+                const data = await resp.json();
+                drawTrendChart(data);
+            } catch (err) {
+                showStatus(`Trend load failed: ${err.message}`);
+            }
+        }
+
+        function drawTrendChart(data) {
+            const canvas = trendCanvas;
+            const ctx = canvas.getContext('2d');
+            const dpr = window.devicePixelRatio || 1;
+            const rect = canvas.getBoundingClientRect();
+            canvas.width = rect.width * dpr;
+            canvas.height = 220 * dpr;
+            ctx.scale(dpr, dpr);
+
+            const w = rect.width;
+            const h = 220;
+            const pad = 45;
+
+            ctx.clearRect(0, 0, w, h);
+
+            if (!data || data.length === 0) {
+                ctx.fillStyle = '#888';
+                ctx.font = '14px system-ui';
+                ctx.textAlign = 'center';
+                ctx.fillText('No trend data yet — submit an analysis to start tracking.', w / 2, h / 2);
+                return;
+            }
+
+            if (data.length === 1) {
+                const p = data[0];
+                ctx.fillStyle = '#888';
+                ctx.font = '14px system-ui';
+                ctx.textAlign = 'center';
+                ctx.fillText(`First visit: ${p.area_mm2.toFixed(1)} mm²`, w / 2, h / 2 - 10);
+                ctx.font = '12px system-ui';
+                ctx.fillText('Add more visits to see a healing trend', w / 2, h / 2 + 15);
+
+                ctx.beginPath();
+                ctx.arc(w / 2, h / 2 - 35, 5, 0, Math.PI * 2);
+                ctx.fillStyle = '#e94560';
+                ctx.fill();
+                return;
+            }
+
+            const rawPoints = data.map(d => ({ date: d.visit_date, area: d.area_mm2 }));
+            const byDate = {};
+            rawPoints.forEach(p => {
+                byDate[p.date] = p;
+            });
+            const points = Object.values(byDate).sort((a, b) => a.date.localeCompare(b.date));
+
+            if (points.length === 1) {
+                const p = points[0];
+                ctx.fillStyle = '#888';
+                ctx.font = '14px system-ui';
+                ctx.textAlign = 'center';
+                ctx.fillText(`First visit: ${p.area.toFixed(1)} mm²`, w / 2, h / 2 - 10);
+                ctx.font = '12px system-ui';
+                ctx.fillText('Add more visits on different dates to see a trend', w / 2, h / 2 + 15);
+
+                ctx.beginPath();
+                ctx.arc(w / 2, h / 2 - 35, 5, 0, Math.PI * 2);
+                ctx.fillStyle = '#e94560';
+                ctx.fill();
+                return;
+            }
+            const areas = points.map(p => p.area);
+            const minArea = Math.min(...areas, 0);
+            const maxArea = Math.max(...areas, 1);
+            const range = maxArea - minArea || 1;
+
+            const plotW = w - pad * 2;
+            const plotH = h - pad * 2;
+            const stepX = plotW / (points.length - 1);
+
+            // Gridlines
+            ctx.strokeStyle = '#eee';
+            ctx.lineWidth = 1;
+            const gridSteps = 4;
+            for (let i = 0; i <= gridSteps; i++) {
+                const y = pad + (plotH / gridSteps) * i;
+                ctx.beginPath();
+                ctx.moveTo(pad, y);
+                ctx.lineTo(w - pad, y);
+                ctx.stroke();
+            }
+
+            // Axes
+            ctx.strokeStyle = '#ccc';
+            ctx.lineWidth = 1.5;
+            ctx.beginPath();
+            ctx.moveTo(pad, pad);
+            ctx.lineTo(pad, h - pad);
+            ctx.lineTo(w - pad, h - pad);
+            ctx.stroke();
+
+            // Y-axis labels
+            ctx.fillStyle = '#888';
+            ctx.font = '11px system-ui';
+            ctx.textAlign = 'right';
+            for (let i = 0; i <= gridSteps; i++) {
+                const val = maxArea - (range / gridSteps) * i;
+                const y = pad + (plotH / gridSteps) * i;
+                ctx.fillText(val.toFixed(0), pad - 6, y + 4);
+            }
+            ctx.fillText('mm²', pad - 6, pad - 8);
+
+            // X-axis labels + points
+            ctx.textAlign = 'center';
+            ctx.fillStyle = '#888';
+
+            points.forEach((p, i) => {
+                const x = pad + i * stepX;
+                const y = h - pad - ((p.area - minArea) / range) * plotH;
+                const dateShort = p.date.slice(5);
+                ctx.fillText(dateShort, x, h - pad + 16);
+
+                ctx.beginPath();
+                ctx.arc(x, y, 5, 0, Math.PI * 2);
+                ctx.fillStyle = '#e94560';
+                ctx.fill();
+            });
+
+            // Connecting line
+            ctx.strokeStyle = '#e94560';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            points.forEach((p, i) => {
+                const x = pad + i * stepX;
+                const y = h - pad - ((p.area - minArea) / range) * plotH;
+                if (i === 0) ctx.moveTo(x, y);
+                else ctx.lineTo(x, y);
+            });
+            ctx.stroke();
+
+            // Title
+            ctx.fillStyle = '#16213e';
+            ctx.font = 'bold 13px system-ui';
+            ctx.textAlign = 'left';
+            ctx.fillText('Wound Area Over Time', pad, 18);
+        }
+
+        drawTrendChart([]);
+    </script>
+</body>
+</html>
