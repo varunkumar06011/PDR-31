@@ -1,0 +1,8 @@
+__pycache__/
+*.pyc
+venv/
+.venv/
+.env
+*.pth
+*.pt
+samples/raw_mask_debug.png
