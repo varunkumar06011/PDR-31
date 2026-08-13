@@ -27,10 +27,7 @@ app.add_middleware(
 
 @app.on_event("startup")
 def startup():
-    logger.info("Loading segmentation model...")
-    checkpoint_path = os.getenv("MODEL_CHECKPOINT_PATH")
-    load_model(checkpoint_path)
-    logger.info("Model loaded.")
+    logger.info("App starting — model will load on first request.")
 
 
 @app.get("/health")

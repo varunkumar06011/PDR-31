@@ -57,7 +57,8 @@ def load_model(checkpoint_path: str | None = None) -> torch.nn.Module:
 
 def _get_model() -> torch.nn.Module:
     if _MODEL is None:
-        load_model()
+        checkpoint_path = os.getenv("MODEL_CHECKPOINT_PATH")
+        load_model(checkpoint_path)
     return _MODEL
 
 
