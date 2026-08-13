@@ -1,9 +1,22 @@
 <!DOCTYPE html>
 <html lang="en">
 <!--
-  Deploy to Vercel: set root directory to /frontend, no build command,
-  no install command — it's a static file. After backend is live on Railway,
-  update BACKEND_URL in the <script> below and redeploy.
+  Deploy to Vercel:
+  1. Go to vercel.com → New Project → import your GitHub repo
+  2. Root Directory: frontend
+  3. No build command, no output directory needed (static file)
+  4. Click Deploy
+  5. After backend is live on Render, update the Render URL in
+     the BACKEND_URL constant below and redeploy
+
+  Deploy backend to Render:
+  1. Go to render.com → New → Web Service → connect your GitHub repo
+  2. Root Directory: backend
+  3. Build: pip install -r requirements.txt
+  4. Start: uvicorn app.main:app --host 0.0.0.0 --port $PORT
+  5. Add env vars: SUPABASE_URL, SUPABASE_KEY, MODEL_CHECKPOINT_PATH
+  6. Note: model checkpoint (.pth) is gitignored — upload it via
+     Render's shell or use a persistent disk at /opt/data/checkpoints/
 -->
 <head>
     <meta charset="UTF-8">
@@ -230,8 +243,11 @@
 
     <script>
         // ── CONFIG ──────────────────────────────────────────────
-        // After deploying backend to Railway, change this URL and redeploy:
-        const BACKEND_URL = 'http://localhost:8000';
+        // Auto-detect: uses localhost in dev, your Render URL in prod
+        // After deploying backend to Render, replace the Render URL below:
+        const BACKEND_URL = window.location.hostname === 'localhost'
+            ? 'http://localhost:8000'
+            : 'https://wound-segmentation-api.onrender.com';
         // ────────────────────────────────────────────────────────
 
         const fileInput = document.getElementById('fileInput');

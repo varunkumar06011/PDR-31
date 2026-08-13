@@ -44,21 +44,58 @@ Output is saved to `samples/output_test.png`.
 
 ---
 
-## Deploy to Railway
+## Deploy to Render
 
-1. Go to [railway.app](https://railway.app) and create a new project.
-2. Connect your GitHub repo.
-3. Set the **root directory** to `/backend`.
-4. Railway should auto-detect the `Procfile`:
-   ```
-   web: uvicorn app.main:app --host 0.0.0.0 --port $PORT
-   ```
-5. Add environment variables:
+1. Go to [render.com](https://render.com) → **New** → **Web Service**
+2. Connect your GitHub repo (`varunkumar06011/PDR-31`)
+3. Settings:
+   - **Root Directory:** `backend`
+   - **Runtime:** Python 3
+   - **Build Command:** `pip install -r requirements.txt`
+   - **Start Command:** `uvicorn app.main:app --host 0.0.0.0 --port $PORT`
+4. Add environment variables:
    - `SUPABASE_URL` — your Supabase project URL
-   - `SUPABASE_KEY` — your Supabase anon/service key
-   - `MODEL_CHECKPOINT_PATH` — (optional) path to a trained checkpoint
-6. Deploy. Railway will install `requirements.txt` and start the server.
-7. Confirm the healthcheck: `https://<your-app>.up.railway.app/health`
+   - `SUPABASE_KEY` — your Supabase service-role key
+   - `MODEL_CHECKPOINT_PATH` — `app/checkpoints/wound_unet.pth`
+5. **Important: Upload the model checkpoint.** The `.pth` file is gitignored
+   (too large for Git). After the first deploy:
+   - Option A: Use Render's **Shell** tab to upload the file:
+     ```
+     cd app/checkpoints
+     # Upload wound_unet.pth via the shell (scp or paste base64)
+     ```
+   - Option B: Add a **Persistent Disk** (1 GB) mounted at `/opt/data`,
+     upload the checkpoint there, and set:
+     ```
+     MODEL_CHECKPOINT_PATH=/opt/data/checkpoints/wound_unet.pth
+     ```
+6. Deploy. Confirm the healthcheck:
+   ```
+   https://<your-service>.onrender.com/health
+   ```
+   Should return `{"status":"ok"}`
+
+> **Note:** Render's free tier spins down after 15 min of inactivity.
+> The first request after spin-down takes ~30 seconds to cold-start.
+
+---
+
+## Deploy Frontend to Vercel
+
+1. Go to [vercel.com](https://vercel.com) → **New Project**
+2. Import your GitHub repo (`varunkumar06011/PDR-31`)
+3. Settings:
+   - **Root Directory:** `frontend`
+   - **Framework Preset:** Other
+   - **Build Command:** (leave empty)
+   - **Output Directory:** (leave empty — static file)
+4. Click **Deploy**
+5. After deploy, update the `BACKEND_URL` in `frontend/index.html` to
+   point to your Render URL:
+   ```js
+   const BACKEND_URL = 'https://<your-service>.onrender.com';
+   ```
+6. Push the change and Vercel will auto-redeploy
 
 ---
 
